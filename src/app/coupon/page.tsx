@@ -3,6 +3,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { TicketIcon, ShoppingBagIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
 
 export default function CouponPage() {
   const router = useRouter();
@@ -24,12 +25,12 @@ export default function CouponPage() {
         {/* SELL & Send 버튼 */}
         <div className="grid grid-cols-2 gap-4 w-full mb-6">
           <button className="flex flex-col items-center justify-center border rounded-lg py-4 hover:bg-gray-100">
-            <span className="text-2xl">💳</span>
-            <span className="font-medium mt-2">SELL</span>
+            <span className="text-2xl"><ShoppingBagIcon className="h-12 w-12"/></span>
+            <span className="text-xl font-bold mt-2">Sell</span>
           </button>
           <button className="flex flex-col items-center justify-center border rounded-lg py-4 hover:bg-gray-100">
-            <span className="text-2xl">📤</span>
-            <span className="font-medium mt-2">Send</span>
+            <span className="text-2xl"><PaperAirplaneIcon className="h-12 w-12"/></span>
+            <span className="text-xl font-bold mt-2">Send</span>
           </button>
         </div>
 
@@ -44,7 +45,7 @@ export default function CouponPage() {
           onClick={() => alert("쿠폰 사용하기")}
           className="w-full bg-gray-200 hover:bg-gray-300 text-black font-semibold py-3 rounded-lg flex items-center justify-center gap-2"
         >
-          🎟 Use Coupon
+            <TicketIcon className="h-12 w-12"/> <span className="text-xl font-bold"> Use Coupon </span>
         </button>
       </div>
 
