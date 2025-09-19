@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 
-type SaleType = "fixed" | "bidding";
 type productType = "GiftCard" | "ElectronicDevice"
 
 
