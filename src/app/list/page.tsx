@@ -63,7 +63,7 @@ export default function OrdersPage() {
         {/* Header */}
         <header className="px-5 pt-4 pb-3 bg-white sticky top-0 z-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">My Orders</h1>
+            <h1 className="text-2xl font-semibold">Coupon Market</h1>
             <div className="flex items-center gap-3">
               <MagnifyingGlassIcon className="w-6 h-6 text-neutral-800" />
               <EllipsisHorizontalIcon className="w-7 h-7 text-neutral-800" />
@@ -73,11 +73,11 @@ export default function OrdersPage() {
           {/* Tabs */}
           <div className="mt-4 flex items-center gap-8">
             <button className="pb-2 text-base font-semibold text-neutral-900 relative">
-              Active
+              All Of Items
               <span className="absolute -bottom-[1px] left-0 h-[3px] w-full rounded-full bg-neutral-900" />
             </button>
             <button className="pb-2 text-base font-medium text-neutral-300">
-              Completed
+              On Sale
             </button>
           </div>
           <div className="h-px w-full bg-neutral-200" />
@@ -145,7 +145,7 @@ export default function OrdersPage() {
               </li>
               <li className="flex flex-col items-center gap-1 text-neutral-900">
                 <ShoppingCartIcon className="w-6 h-6" />
-                <span className="font-semibold">Orders</span>
+                <span className="font-semibold">Market</span>
               </li>
               <li className="flex flex-col items-center gap-1">
                 <ChatBubbleLeftRightIcon className="w-6 h-6" />
