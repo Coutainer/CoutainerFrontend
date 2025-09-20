@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 
@@ -46,8 +47,8 @@ export default function GoogleLoginButton() {
           {/* Header */}
           <div className="px-8 pt-10 pb-4 text-center">
             <div className="inline-flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gray-100 ring-1 ring-gray-200 grid place-items-center">
-                <span className="text-lg font-bold">C</span>
+              <div className="h-25 w-25 rounded-xl p-1 bg-gray-100 ring-1 ring-gray-200 grid place-items-center">
+                <Image src="/logo.png" alt="logo" width={300} height={300}/>
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">Coutainer</h1>
             </div>
@@ -68,7 +69,7 @@ export default function GoogleLoginButton() {
 
               <div className="flex items-center justify-center gap-3 px-5 py-3.5">
                 <FcGoogle className="h-5 w-5" />
-                <span className="font-semibold">{loading ? "Google로 이동 중..." : "Google로 로그인"}</span>
+                <span className="font-semibold">{loading ? "Google로 이동 중..." : "Google로 zkLogin"}</span>
               </div>
             </button>
 
