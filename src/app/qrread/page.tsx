@@ -62,7 +62,7 @@ export default function QrReadPageZXingOnly() {
   }, []);
 
   // 검증 API
-  const verifyCode = useCallback(async (code: string) => {
+  const verifyCode = useCallback(async (code: any) => {
     if (!API_BASE) {
       setStatus('error');
       setError('API_BASE(NEXT_PUBLIC_BACKEND_IP)is not set up.');
@@ -71,8 +71,13 @@ export default function QrReadPageZXingOnly() {
     try {
       setStatus('verifying');
       setResult(null);
-      const url = `${API_BASE.replace(/\/$/, '')}/qr/verify?code=${encodeURIComponent(code)}`;
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      const oneTimeToken = JSON.parse(code).token || ''
+      const res = await fetch("/api/verify-token", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ oneTimeToken }),
+      });
+      
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`서버 오류 (${res.status}) ${text}`);
