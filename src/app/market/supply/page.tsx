@@ -236,7 +236,7 @@ export default function MarketPage() {
                     </div>
 
                     {expiry && (
-                      <div className="mt-2 text-right text-[11px] text-slate-500">만료: {expiry}</div>
+                      <div className="mt-2 text-right text-[11px] text-slate-500">exfire: {expiry}</div>
                     )}
 
                     <button

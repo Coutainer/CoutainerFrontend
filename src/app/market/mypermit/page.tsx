@@ -48,6 +48,30 @@ function fmtDate(raw?: string): string {
   ).padStart(2, "0")}`;
 }
 
+function toLocalMarketPath(raw?: string | null, baseDir = "/market") {
+  if (!raw) return null;
+
+  let last = raw.trim();
+
+  // URL이면 경로의 마지막 파일명만 추출
+  try {
+    const u = new URL(last);
+    last = u.pathname;
+  } catch {
+    // URL이 아니면 그대로 진행
+  }
+
+  const file = last.split("/").pop()?.split("?")[0].split("#")[0] ?? "";
+  // 파일명 화이트리스트(보안/오타 대비)
+  const safe = /^[a-zA-Z0-9._-]+$/.test(file) ? file : "";
+  if (!safe) return null;
+
+  // 이미지 확장자만 허용
+  if (!/\.(png|jpe?g|webp|gif|svg)$/i.test(safe)) return null;
+
+  return `${baseDir}/${safe}`;
+}
+
 function badgeColor(status: string) {
   const s = status?.toUpperCase?.() || "";
   if (s.includes("LISTED")) return "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30";
@@ -58,12 +82,22 @@ function badgeColor(status: string) {
 
 /** next/image 호스트 미설정 대비: 외부 URL이면 <img> 사용 */
 function SafeImg({ src, alt, className }: { src?: string; alt: string; className?: string }) {
-  if (!src) return <div className={`bg-slate-800/50 ${className}`} />;
-  const isExternal = /^https?:\/\//i.test(src);
-  if (isExternal) return <img src={src} alt={alt} className={className} />;
-  return (
-    <Image src={src} alt={alt} width={400} height={240} className={className} priority={false} />
-  );
+  const local = toLocalMarketPath(src); // ➜ /market/파일명 으로 매핑
+  if (local) {
+    return (
+      <Image
+        src={local}
+        alt={alt}
+        width={400}
+        height={400}
+        className={className}
+        priority={false}
+      />
+    );
+  }
+
+  // 로컬 매핑이 실패하면(확장자/파일명 이상 등) placeholder
+  return <div className={`bg-slate-800/50 ${className}`} aria-label={alt} />;
 }
 
 /** 랜덤 nonce/idempotencyKey 생성 */
@@ -378,13 +412,13 @@ export default function MyPermitPage() {
             비어있습니다.
           </div>
         ) : (
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {items.map((p) => {
               const isRedeemed = (p.status ?? "").toUpperCase().includes("REDEEM");
               return (
                 <li
                   key={p.id}
-                  className="group overflow-hidden rounded-xl border border-white/10 bg-card/60 backdrop-blur transition hover:border-white/20"
+                  className="group overflow-hidden rounded-xl border border-gray-500 bg-card/60 backdrop-blur transition hover:border-gray-700"
                 >
                   <div className="relative">
                     <SafeImg src={p.imageUrl} alt={p.title} className="h-36 w-full object-cover" />
@@ -445,13 +479,13 @@ export default function MyPermitPage() {
         <h1 className="text-xl font-semibold">My Permits</h1>
         <div className="flex items-center gap-2 text-xs">
           <span className="rounded-full border border-white/10 px-2 py-1 text-slate-300">
-            전체: {summary.total}
+            entire: {summary.total}
           </span>
           <span className="rounded-full border border-white/10 px-2 py-1 text-slate-300">
-            올린 것: {summary.totalSupplies}
+            posted: {summary.totalSupplies}
           </span>
           <span className="rounded-full border border-white/10 px-2 py-1 text-slate-300">
-            산 것: {summary.totalPurchases}
+            bought: {summary.totalPurchases}
           </span>
         </div>
       </header>
@@ -470,9 +504,9 @@ export default function MyPermitPage() {
       {!pending && !error && !empty && (
         <>
           {/* 내가 올린(supplies): 전달 버튼 노출 X */}
-          <Section title="내가 올린(supplies)" items={supplies} showTransfer={false} />
+          <Section title="Supplies" items={supplies} showTransfer={false} />
           {/* 내가 산 것(purchases): 전달 버튼 노출 O */}
-          <Section title="내가 산 것(purchases)" items={purchases} showTransfer />
+          <Section title="Purchases" items={purchases} showTransfer />
         </>
       )}
 

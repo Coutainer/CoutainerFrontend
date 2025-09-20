@@ -42,13 +42,13 @@ export default function MarketScreen({
       </div>
 
       {/* 상태 */}
-      {pending && <p className="text-sm text-slate-400">불러오는 중…</p>}
+      {pending && <p className="text-sm text-slate-400">Bringing in…</p>}
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm">
           {error}
           {onReload && (
             <button onClick={onReload} className="ml-2 underline">
-              다시 시도
+              Try again
             </button>
           )}
         </div>

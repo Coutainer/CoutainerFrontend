@@ -29,6 +29,33 @@ type RedemptionResp = {
   object: { id: number; objectId: string; title: string; remaining: string };
 };
 
+function toLocalMarketPath(raw?: string | null, baseDir = "/market") {
+  if (!raw) return null;
+
+  let last = String(raw).trim();
+
+  // URL이면 pathname만 취득
+  try {
+    const u = new URL(last);
+    last = u.pathname;
+  } catch {
+    // URL이 아니면 그대로 진행
+  }
+
+  // 파일명만 추출 (쿼리/해시 제거)
+  const file = last.split("/").pop()?.split("?")[0].split("#")[0] ?? "";
+
+  // 파일명 화이트리스트 (보안/오타 방지)
+  const safe = /^[a-zA-Z0-9._-]+$/.test(file) ? file : "";
+  if (!safe) return null;
+
+  // 이미지 확장자만 허용
+  if (!/\.(png|jpe?g|webp|gif|svg)$/i.test(safe)) return null;
+
+  // public/market/파일명
+  return `${baseDir}/${safe}`;
+}
+
 export default function CouponPage() {
   const router = useRouter();
   const sp = useSearchParams();
@@ -62,12 +89,12 @@ export default function CouponPage() {
         setError(null);
 
         if (!oid && (!sp.get("cid") || Number.isNaN(cid))) {
-          throw new Error("잘못된 접근입니다. 쿠폰 식별자가 없습니다.");
+          throw new Error("Invalid access, no coupon identifier.");
         }
 
         const res = await fetch("/api/my-caps", { method: "GET", cache: "no-store" });
         if (res.status === 401) {
-          setError("로그인이 필요합니다.");
+          setError("require Login.");
           setPending(false);
           return;
         }
@@ -81,10 +108,10 @@ export default function CouponPage() {
           (!Number.isNaN(cid) && rows.find((r) => r.id === cid)) ||
           null;
 
-        if (!found) throw new Error("해당 쿠폰을 찾을 수 없습니다.");
+        if (!found) throw new Error("The coupon was not found.");
         setItem(found);
       } catch (e: any) {
-        setError(e?.message ?? "쿠폰 정보를 불러오지 못했습니다.");
+        setError(e?.message ?? "Failed to retrieve coupon information.");
       } finally {
         setPending(false);
       }
@@ -105,7 +132,7 @@ export default function CouponPage() {
     try {
       const trimmed = price.trim();
       if (!trimmed || Number.isNaN(Number(trimmed))) {
-        throw new Error("가격을 숫자로 입력하세요.");
+        throw new Error("Please enter the price as a number");
       }
 
       const res = await fetch("/api/marketplace/list-for-sale", {
@@ -123,10 +150,10 @@ export default function CouponPage() {
         throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
       }
 
-      setSubmitOk("마켓에 등록되었습니다.");
+      setSubmitOk("It's registered in the market.");
       setSellOpen(false);
     } catch (e: any) {
-      setSubmitError(e?.message ?? "등록에 실패했습니다.");
+      setSubmitError(e?.message ?? "Registration failed.");
     } finally {
       setSubmitting(false);
     }
@@ -171,7 +198,7 @@ export default function CouponPage() {
       const url = await QRCode.toDataURL(payload, { width: 320, margin: 1 });
       setQrDataUrl(url);
     } catch (e: any) {
-      setRedeemError(e?.message ?? "토큰 발급에 실패했습니다.");
+      setRedeemError(e?.message ?? "Failed to issue token.");
     } finally {
       setRedeemPending(false);
     }
@@ -227,7 +254,7 @@ export default function CouponPage() {
                   <p className="text-sm text-slate-600 mt-1 line-clamp-2">{item.description}</p>
                 )}
                 <p className="text-xs text-slate-500 mt-1">
-                  {formatWon(item.faceValue)} · 남음 {safeInt(item.remaining)} · {item.state}
+                  {formatWon(item.faceValue)} · remain {safeInt(item.remaining)} · {item.state}
                 </p>
               </div>
 
@@ -284,8 +311,8 @@ export default function CouponPage() {
         {sellOpen && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-6">
             <div className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-xl">
-              <h2 className="text-lg font-semibold">판매 가격 입력</h2>
-              <p className="text-xs text-slate-500 mt-1">원하는 판매가(숫자)를 입력하세요.</p>
+              <h2 className="text-lg font-semibold">Enter Sales Price</h2>
+              <p className="text-xs text-slate-500 mt-1">Enter the desired selling price.</p>
 
               <div className="mt-4">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Price (₩)</label>
@@ -310,14 +337,14 @@ export default function CouponPage() {
                   onClick={() => setSellOpen(false)}
                   disabled={submitting}
                 >
-                  취소
+                  Cancle
                 </button>
                 <button
                   className="flex-1 rounded-lg bg-slate-900 text-white px-4 py-2 disabled:opacity-60"
                   onClick={handleSellSubmit}
                   disabled={submitting}
                 >
-                  {submitting ? "등록 중..." : "판매 등록"}
+                  {submitting ? "Registering...." : "Register Sales"}
                 </button>
               </div>
             </div>
@@ -329,7 +356,7 @@ export default function CouponPage() {
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-6">
             <div className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-xl">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">쿠폰 사용 (QR)</h2>
+                <h2 className="text-lg font-semibold">Use Coupon (QR)</h2>
                 <button
                   className="rounded-full w-8 h-8 bg-slate-100 hover:bg-slate-200"
                   onClick={() => setRedeemOpen(false)}
@@ -341,7 +368,7 @@ export default function CouponPage() {
               {redeemPending && (
                 <div className="mt-6 space-y-3">
                   <div className="h-48 bg-slate-200 animate-pulse rounded-xl" />
-                  <p className="text-sm text-slate-600">토큰 생성 중...</p>
+                  <p className="text-sm text-slate-600">Generating token...</p>
                 </div>
               )}
 
@@ -362,11 +389,11 @@ export default function CouponPage() {
                       <div className="w-[280px] h-[280px] rounded-xl bg-slate-200" />
                     )}
                     <p className="mt-3 text-xs text-slate-500">
-                      만료: {normalizeExpiry(redeemData.expiresAt)}
+                      exfire: {normalizeExpiry(redeemData.expiresAt)}
                     </p>
 
                     <div className="mt-3 w-full">
-                      <label className="text-xs font-medium text-slate-600">토큰</label>
+                      <label className="text-xs font-medium text-slate-600">Tocken</label>
                       <div className="mt-1 p-2 rounded-lg bg-slate-100 text-[11px] break-all">
                         {redeemData.token}
                       </div>
@@ -425,18 +452,35 @@ function SmartImage({
   width: number;
   height: number;
 }) {
-  const isExternal = /^https?:\/\//i.test(src);
+  // 1) src에서 파일명만 추출해 /market/파일명 으로 매핑
+  const local = toLocalMarketPath(src);
+
+  // 2) 매핑 성공 시 로컬 이미지 사용 (Next/Image 최적화 OK)
+  if (local) {
+    return (
+      <Image
+        src={local}
+        alt={alt}
+        width={width}
+        height={height}
+        className="rounded-md object-contain mx-auto"
+      />
+    );
+  }
+
+  // 3) 실패 시 기본 이미지로 대체 (프로젝트에 존재해야 함)
+  const fallback = "/market/default.png"; // 없으면 /logos/default.png 등으로 교체
   return (
     <Image
-      src={src}
+      src={fallback}
       alt={alt}
       width={width}
       height={height}
       className="rounded-md object-contain mx-auto"
-      unoptimized={isExternal}
     />
   );
 }
+
 
 function normalizeExpiry(input: string) {
   const d = new Date(input);

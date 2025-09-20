@@ -65,7 +65,7 @@ export default function QrReadPageZXingOnly() {
   const verifyCode = useCallback(async (code: string) => {
     if (!API_BASE) {
       setStatus('error');
-      setError('API_BASE(NEXT_PUBLIC_BACKEND_IP)가 설정되지 않았습니다.');
+      setError('API_BASE(NEXT_PUBLIC_BACKEND_IP)is not set up.');
       return;
     }
     try {
@@ -82,7 +82,7 @@ export default function QrReadPageZXingOnly() {
       setStatus('done');
     } catch (e: any) {
       setStatus('error');
-      setError(e?.message || '검증 중 오류가 발생했습니다.');
+      setError(e?.message || 'Error occurred during verification.');
     }
   }, []);
 
@@ -144,7 +144,7 @@ export default function QrReadPageZXingOnly() {
       setStatus('scanning');
     } catch (e: any) {
       setStatus('error');
-      setError(e?.message || '카메라/디코더 초기화 실패 (HTTPS/권한 확인)');
+      setError(e?.message || 'Camera/decoder initialization failed (HTTPS/Authorization Check)');
     }
   }, [lastCode, verifyCode]);
 
@@ -153,7 +153,7 @@ export default function QrReadPageZXingOnly() {
     try {
       const v = videoRef.current;
       if (!v || !v.videoWidth || !v.videoHeight) {
-        alert('비디오 프레임이 준비되지 않았습니다.');
+        alert('Video frame not ready.');
         return;
       }
       if (!canvasRef.current) canvasRef.current = document.createElement('canvas');
@@ -184,11 +184,11 @@ export default function QrReadPageZXingOnly() {
           setLastCode(code);
           verifyCode(code);
         } else {
-          alert('QR을 찾지 못했습니다 (스냅샷). 더 가까이/밝게 비춰보세요.');
+          alert('QR not found (snapshot). Look closer/bright.');
         }
       } catch (err) {
         console.debug('[snapshot decode fail]', err);
-        alert('스냅샷 디코딩 실패. 각도/거리/밝기를 조정해보세요.');
+        alert('Failed to decode snapshot. Try adjusting angle/distance/brightness.');
       }
     } catch (e) {
       console.debug('[snapshot error]', e);
@@ -210,7 +210,7 @@ export default function QrReadPageZXingOnly() {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-6 space-y-4">
-      <h1 className="text-2xl font-bold">QR 코드 스캔 (ZXing 진단용)</h1>
+      <h1 className="text-2xl font-bold">QR code scan</h1>
 
       <div className={`rounded-2xl overflow-hidden bg-black aspect-video relative ${hitBlink ? 'ring-4 ring-emerald-400' : ''}`}>
         <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
@@ -238,18 +238,18 @@ export default function QrReadPageZXingOnly() {
           }}
         />
         <span>
-          {status === 'idle' && '대기 중'}
-          {status === 'camera' && '카메라 준비 중… (버튼으로 시작)'}
-          {status === 'scanning' && '스캔 중… QR을 프레임 중앙에 맞춰주세요'}
-          {status === 'verifying' && '서버 검증 중…'}
-          {status === 'done' && '검증 완료'}
-          {status === 'error' && '오류'}
+          {status === 'idle' && 'waiting'}
+          {status === 'camera' && 'preparing for camera... (Start with a button)'}
+          {status === 'scanning' &&  'scanning... Please center the QR in the middle of the frame'}
+          {status === 'verifying' && 'server validation...'}
+          {status === 'done' && 'verified'}
+          {status === 'error' && 'error'}
         </span>
       </div>
 
       {lastCode && (
         <div className="text-xs break-all text-slate-400">
-          마지막 감지 코드: <span className="font-mono">{lastCode}</span>
+          Last detection code: <span className="font-mono">{lastCode}</span>
         </div>
       )}
 
@@ -262,7 +262,7 @@ export default function QrReadPageZXingOnly() {
       {result && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
           <div className="font-semibold">
-            {result.exists ? '유효한 QR입니다.' : '존재하지 않는 QR입니다.'}
+            {result.exists ? 'It is a valid QR.' : 'This is a QR that does not exit.'}
           </div>
           <pre className="overflow-auto text-xs leading-relaxed">
             {JSON.stringify(result, null, 2)}
@@ -278,19 +278,19 @@ export default function QrReadPageZXingOnly() {
       {!result && (
         <div className="flex flex-wrap gap-2">
           <button onClick={startScan} className="rounded-xl px-4 py-2 text-sm bg-emerald-600 text-white">
-            카메라 시작(필수)
+            Camera start (required)
           </button>
           <button onClick={snapshotDecode} className="rounded-xl px-4 py-2 text-sm bg-slate-800 text-white">
-            스냅샷 디코드(디버그)
+            Snapshot Decode (Debug)
           </button>
           <button onClick={resetScan} className="rounded-xl px-4 py-2 text-sm border border-slate-300">
-            초기화
+            Initialization
           </button>
         </div>
       )}
 
       <p className="text-xs text-slate-400">
-        * HTTPS 또는 localhost 필요. 모바일은 후면 카메라가 선택되지 않으면 화면 회전/카메라 전환을 시도하세요.
+        * HTTPS or localhost required. If the rear camera is not selected for the mobile, try swiveling the screen/camera.
       </p>
     </main>
   );

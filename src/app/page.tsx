@@ -116,10 +116,10 @@ type Profile = {
 };
 
 const cards = [
-  { href: "/market", role: "issuer",  title: "발행자", desc: "토큰/쿠폰/증서를 발행",     Icon: UserGroupIcon,         tone: "from-indigo-500 to-sky-500" },
-  { href: "/mycoupon", role: "seller",  title: "판매자", desc: "상품 등록 및 판매 관리",     Icon: BuildingStorefrontIcon, tone: "from-rose-500 to-orange-500" },
-  { href: "/list",   role: "buyer",   title: "구매자", desc: "상품 탐색 및 결제",         Icon: ShoppingCartIcon,      tone: "from-emerald-500 to-lime-500" },
-  { href: "/market/supply", role: "vendor",  title: "공급자", desc: "재고/납품 및 공급 관리",     Icon: TruckIcon,             tone: "from-violet-500 to-fuchsia-500" },
+  { href: "/market", role: "issuer",  title: "Issuer", desc: "Token/Coupon/Certificate",     Icon: UserGroupIcon,         tone: "from-indigo-500 to-sky-500" },
+  { href: "/mycoupon", role: "seller",  title: "Seller", desc: "Product registration and sales management",     Icon: BuildingStorefrontIcon, tone: "from-rose-500 to-orange-500" },
+  { href: "/list",   role: "buyer",   title: "Buyer", desc: "Exploring and Paying for Products",         Icon: ShoppingCartIcon,      tone: "from-emerald-500 to-lime-500" },
+  { href: "/market/supply", role: "vendor",  title: "Vendor", desc: "Inventory/Delivery and Supply Management",     Icon: TruckIcon,             tone: "from-violet-500 to-fuchsia-500" },
 ];
 
 // 🔹 숫자 문자열을 천단위로 포맷 + 단위(P)
@@ -189,17 +189,17 @@ export default async function Page({
         {/* 성공/실패 배너 */}
         {upgraded && (
           <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            사업자 전환이 완료되었습니다. 프로필이 갱신되었어요.
+            Business transition is complete. Profile has been updated.
           </div>
         )}
         {downgraded && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            일반 소비자로 전환되었습니다.
+            It has been converted to a regular consumer.
           </div>
         )}
         {errorMsg && (
           <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            요청 실패: {decodeURIComponent(errorMsg)}
+            Request failed: {decodeURIComponent(errorMsg)}
           </div>
         )}
 
@@ -219,10 +219,10 @@ export default async function Page({
 
             <div className="min-w-0">
               <p className="truncate text-sm text-gray-600">
-                {profile ? "Welcome!" : "프로필을 불러오는 중이거나 실패했습니다."}
+                {profile ? "Welcome!" : "Failed to load profile."}
               </p>
               <h2 className="truncate text-base font-semibold text-gray-900">
-                {profile ? `${profile.nickname} (${profile.role})` : "로그인 사용자"}
+                {profile ? `${profile.nickname} (${profile.role})` : "Login User"}
               </h2>
             </div>
           </div>
@@ -235,10 +235,10 @@ export default async function Page({
                 <button
                   type="submit"
                   className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-amber-500/30 hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
-                  aria-label="소비자로 전환"
-                  title="소비자로 전환"
+                  aria-label="Transition to consumers"
+                  title="Transition to consumers"
                 >
-                  소비자로 전환
+                  Transition to consumers
                 </button>
               </form>
             ) : (
@@ -248,11 +248,11 @@ export default async function Page({
                   className={`rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-indigo-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 ${
                     isPureConsumer ? "bg-indigo-600 hover:bg-indigo-700" : "bg-gray-400 cursor-not-allowed"
                   }`}
-                  aria-label="사업자 전환"
-                  title={isPureConsumer ? "사업자 전환" : "현재 상태에서는 전환할 수 없습니다"}
+                  aria-label="Transition to a business"
+                  title={isPureConsumer ? "Transition to a business" : "Cannot switch from the current state"}
                   disabled={!isPureConsumer}
                 >
-                  사업자 전환
+                  Transition to a business
                 </button>
               </form>
             )}
@@ -263,7 +263,7 @@ export default async function Page({
                 type="submit"
                 className="rounded-lg bg-white/80 px-4 py-2 text-sm font-medium text-gray-800 ring-1 ring-gray-200 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70"
               >
-                로그아웃
+                Log Out
               </button>
             </form>
           </div>
@@ -272,23 +272,23 @@ export default async function Page({
         {/* 프로필 카드 */}
         <div className="mb-8 overflow-hidden rounded-2xl bg-white/90 p-5 ring-1 ring-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-900">내 프로필</h3>
+            <h3 className="text-base font-semibold text-gray-900">My Profile</h3>
 
             {/* 🔹 배지 영역: 보유 포인트 + 지갑 상태 */}
             <div className="flex items-center gap-2">
               {/* ⬇️ 추가된 보유 포인트 배지 */}
               <span
                 className="rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-                title="보유 포인트"
+                title="a point of possession"
               >
-                보유 포인트 {pointBalance}
+                a point of possession {pointBalance}
               </span>
 
               <span
                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide
                 ${profile?.hasWallet ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}
               >
-                {profile?.hasWallet ? "지갑 연결됨" : "지갑 없음"}
+                {profile?.hasWallet ? "Wallet Connected" : "No wallet"}
               </span>
             </div>
           </div>
@@ -299,30 +299,30 @@ export default async function Page({
               <span className="font-medium">{profile?.id ?? "-"}</span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 ring-1 ring-gray-200">
-              <span className="text-gray-500">주소</span>
+              <span className="text-gray-500">Address</span>
               <span className="font-medium truncate">{profile?.address ?? "-"}</span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 ring-1 ring-gray-200">
-              <span className="text-gray-500">닉네임</span>
+              <span className="text-gray-500">NickName</span>
               <span className="font-medium">{profile?.nickname ?? "-"}</span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 ring-1 ring-gray-200">
-              <span className="text-gray-500">역할</span>
+              <span className="text-gray-500">Role</span>
               <span className="font-medium">{profile?.role ?? "-"}</span>
             </div>
           </div>
 
           {!profile && (
             <p className="mt-3 text-sm text-amber-700">
-              프로필을 불러오지 못했어요. 잠시 후 다시 시도하거나 새로고침 해주세요.
+              Failed to load profile. Please try again or refresh in a moment.
             </p>
           )}
         </div>
 
         <header className="mb-10">
           <p className="text-sm font-medium tracking-wide text-indigo-700/80">ONBOARDING</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">사용자 유형을 선택하세요</h1>
-          <p className="mt-2 text-gray-600">역할에 맞는 대시보드로 이동합니다. 언제든 홈으로 돌아와 변경할 수 있어요.</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">Please select a user type</h1>
+          <p className="mt-2 text-gray-600">Go to the dashboard that fits your role. You can always come home and change it.</p>
         </header>
 
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -371,7 +371,7 @@ export default async function Page({
                 {/* CTA row */}
                 <div className="mt-5 flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">
-                    {disabled ? "권한 필요" : "자세히 보기"}
+                    {disabled ? "Requires permission" : "View more"}
                   </span>
                   <span
                     className={[
@@ -379,7 +379,7 @@ export default async function Page({
                       disabled ? "text-gray-500 bg-gray-200" : `text-white bg-gradient-to-r ${tone}`,
                     ].join(" ")}
                   >
-                    {disabled ? "이동 불가" : "바로 가기"}
+                    {disabled ? "can't move" : "Shortcut"}
                     <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                       <path
                         fillRule="evenodd"
@@ -402,9 +402,9 @@ export default async function Page({
         </section>
 
         <div className="mt-10 text-center text-sm text-gray-600">
-          잘 모르겠나요?{" "}
+          Don't you know?{" "}
           <Link href="/guide" className="font-medium text-indigo-700 underline-offset-2 hover:underline">
-            역할 가이드 보기
+            View Role Guide
           </Link>
         </div>
       </div>

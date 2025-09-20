@@ -35,16 +35,16 @@ export default function NewPermitPage() {
     setError(null);
 
     try {
-      if (!title.trim()) throw new Error("title을 입력하세요.");
-      if (!description.trim()) throw new Error("description을 입력하세요.");
-      if (!imageUrl.trim()) throw new Error("imageUrl을 입력하세요.");
-      if (!limit.trim() || Number.isNaN(Number(limit))) throw new Error("limit는 숫자 형태여야 합니다.");
-      if (!faceValue.trim() || Number.isNaN(Number(faceValue))) throw new Error("faceValue는 숫자 형태여야 합니다.");
-      if (!price.trim() || Number.isNaN(Number(price))) throw new Error("price는 숫자 형태여야 합니다.");
-      if (!expiryLocal) throw new Error("유효기간(expiry)을 선택하세요.");
+      if (!title.trim()) throw new Error("Enter The Title.");
+      if (!description.trim()) throw new Error("Enter The Description.");
+      if (!imageUrl.trim()) throw new Error("Enter The ImageUrl.");
+      if (!limit.trim() || Number.isNaN(Number(limit))) throw new Error("limit must be in numeric form.");
+      if (!faceValue.trim() || Number.isNaN(Number(faceValue))) throw new Error("faceValue must be in numeric form.");
+      if (!price.trim() || Number.isNaN(Number(price))) throw new Error("price must be in numeric form.");
+      if (!expiryLocal) throw new Error("Select an expiration date..");
 
       const expiry = toIsoZulu(expiryLocal);
-      if (!expiry) throw new Error("유효한 expiry 값을 입력하세요.");
+      if (!expiry) throw new Error("Please enter a valid expiry value.");
 
       // ✅ Next API 경유: 쿠키에서 token을 읽어 백엔드에 auth 헤더로 전달
       const res = await fetch("/api/permit/list", {
@@ -64,7 +64,7 @@ export default function NewPermitPage() {
       });
 
       if (!res.ok) {
-        let msg = `등록 실패 (${res.status})`;
+        let msg = `registration failure (${res.status})`;
         try {
           const j = await res.json();
           if (j?.error) msg += ` ${j.error}`;
@@ -88,7 +88,7 @@ export default function NewPermitPage() {
 
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
-      <h1 className="mb-6 text-xl font-bold">새 아이템 등록</h1>
+      <h1 className="mb-6 text-xl font-bold">Register a new item</h1>
 
       {done ? (
         <div className="rounded-md bg-red-500/10 p-3 text-red-300">
@@ -102,7 +102,7 @@ export default function NewPermitPage() {
               className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="스타벅스 아메리카노 쿠폰"
+              placeholder="Starbucks americano coupon"
               required
             />
           </label>
@@ -113,7 +113,7 @@ export default function NewPermitPage() {
               className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="스타벅스 아메리카노 1잔 무료"
+              placeholder="1 free Starbucks americano"
               rows={3}
               required
             />
@@ -171,7 +171,7 @@ export default function NewPermitPage() {
           </div>
 
           <label className="block">
-            <span className="block text-sm mb-1">Price (원)</span>
+            <span className="block text-sm mb-1">Price (KRW)</span>
             <input
               type="number"
               min={0}
@@ -184,7 +184,7 @@ export default function NewPermitPage() {
           </label>
 
           <label className="block">
-            <span className="block text-sm mb-1">Expiry (유효기간)</span>
+            <span className="block text-sm mb-1">Expiry</span>
             <input
               type="datetime-local"
               className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
@@ -194,7 +194,7 @@ export default function NewPermitPage() {
               required
             />
             <p className="mt-1 text-xs text-slate-400">
-              제출 시 UTC ISO(Z)로 변환됩니다.
+              It will be converted to UTC ISO(Z) upon submission.
             </p>
           </label>
 

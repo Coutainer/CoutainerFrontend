@@ -53,10 +53,10 @@ export default function PointChargeButton() {
         type="button"
         onClick={() => setOpen(true)}
         className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-indigo-500/30 hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70"
-        aria-label="포인트 충전"
-        title="포인트 충전"
+        aria-label="Point Charge"
+        title="Point Charge"
       >
-        포인트 충전
+        Point Charge
       </button>
 
       {open && (
@@ -66,11 +66,11 @@ export default function PointChargeButton() {
           aria-modal="true"
         >
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl ring-1 ring-gray-200">
-            <h3 className="text-base font-semibold text-gray-900">포인트 충전</h3>
-            <p className="mt-1 text-sm text-gray-600">충전할 금액을 입력하세요.</p>
+            <h3 className="text-base font-semibold text-gray-900">Point Charge</h3>
+            <p className="mt-1 text-sm text-gray-600">Please enter the amount you want to charge.</p>
 
             <div className="mt-4">
-              <label className="block text-sm text-gray-700 mb-1">금액 (원)</label>
+              <label className="block text-sm text-gray-700 mb-1">Amount (KRW)</label>
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -102,7 +102,7 @@ export default function PointChargeButton() {
             </div>
 
             <p className="mt-3 text-[11px] text-gray-500">
-              결제 사유는 <span className="font-medium">"포인트 충전"</span> 으로 전송됩니다.
+              The payment reason is sent to<span className="font-medium">"Point Charge"</span>
             </p>
           </div>
         </div>

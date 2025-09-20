@@ -53,7 +53,7 @@ export default function OrdersPage() {
         const data = (await res.json()) as MarketItem[];
         setItems(Array.isArray(data) ? data : []);
       } catch (e: any) {
-        setError(e?.message || "불러오기 실패");
+        setError(e?.message || "Failed to call");
       } finally {
         setPending(false);
       }
@@ -109,7 +109,7 @@ export default function OrdersPage() {
 
       setBuyDone(objectId);
     } catch (e: any) {
-      setBuyError(e?.message || "구매 실패");
+      setBuyError(e?.message || "Failed to purchase");
     } finally {
       setBuyingId(null);
     }
@@ -148,27 +148,27 @@ export default function OrdersPage() {
 
             {/* List */}
             <main className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-              {pending && <div className="text-sm text-neutral-500">불러오는 중…</div>}
+              {pending && <div className="text-sm text-neutral-500">Bringing in…</div>}
 
               {error && (
                 <div className="text-sm text-red-500">
-                  목록을 불러오지 못했습니다: {error}
+                  Failed to load list: {error}
                 </div>
               )}
 
               {!pending && !error && items.length === 0 && (
-                <div className="text-sm text-neutral-500">판매 중인 아이템이 없습니다.</div>
+                <div className="text-sm text-neutral-500">No items on sale.</div>
               )}
 
               {/* 전역 상태 알림 */}
               {buyError && (
                 <div className="text-sm text-red-600">
-                  구매 실패: {buyError}
+                  Failed to purchase: {buyError}
                 </div>
               )}
               {buyDone && (
                 <div className="text-sm text-emerald-600">
-                  구매 완료: {buyDone}
+                  Purchase completed: {buyDone}
                 </div>
               )}
 
