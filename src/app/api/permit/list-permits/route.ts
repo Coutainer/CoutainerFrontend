@@ -1,17 +1,30 @@
-// app/api/permit/list-permits/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_IP!;
 const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "app_token";
 
+// 공용 타입 정의
+type Permit = {
+  id?: number | string;
+  objectId?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  faceValue?: string | number;
+  price?: string | number;
+  expiry?: string;
+  status?: string; // "LISTED", "SOLD", "EXPIRED" 등
+  [key: string]: any;
+};
+
 /**
  * GET /api/permit/list-permits
- * - 서버에서 쿠키의 토큰을 읽어 백엔드 /permit/list-permits 로 전달
- * - 백엔드 스펙: auth 헤더 사용
+ * - 쿠키에서 토큰 읽기 → 백엔드 호출
+ * - status === "LISTED" 만 반환
  */
 export async function GET(_req: NextRequest) {
-  const jar = await cookies();                           // Next 15.x: await 필요
+  const jar = await cookies();
   const token = jar.get(COOKIE_NAME)?.value;
   if (!token) {
     return NextResponse.json({ error: "no token" }, { status: 401 });
@@ -23,11 +36,18 @@ export async function GET(_req: NextRequest) {
     cache: "no-store",
   });
 
-  // 백엔드 응답 그대로 패스스루
-  const text = await res.text().catch(() => "");
-  const ct = res.headers.get("content-type") ?? "application/json";
-  return new NextResponse(text || "{}", {
-    status: res.status,
-    headers: { "content-type": ct },
-  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    return new NextResponse(text || "{}", { status: res.status });
+  }
+
+  // JSON 파싱 후 status === "LISTED" 필터링
+  const data = (await res.json().catch(() => ({}))) as { permits?: Permit[] };
+  let permits: Permit[] = [];
+
+  if (Array.isArray(data.permits)) {
+    permits = data.permits.filter((p: Permit) => p.status === "LISTED");
+  }
+
+  return NextResponse.json({ permits });
 }

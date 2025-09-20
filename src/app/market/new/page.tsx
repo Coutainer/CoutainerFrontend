@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+
 
 type Scope = "COUPON_ISSUANCE" | "ETC";
 
@@ -17,6 +19,7 @@ export default function NewPermitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const router = useRouter();
 
   function toIsoZulu(local: string) {
     // "YYYY-MM-DDTHH:mm" 형태를 받아 UTC ISO(Z)로 변환
@@ -56,7 +59,7 @@ export default function NewPermitPage() {
           limit,
           faceValue,
           price,
-          expiry, // 예: "2024-12-31T23:59:59Z" 형태 (toISOString 결과)
+          expiry,
         }),
       });
 
@@ -73,13 +76,9 @@ export default function NewPermitPage() {
         throw new Error(msg);
       }
 
-      setDone(true);
-      // 필요 시 상위 창에 알림
-      try {
-        window.opener?.postMessage({ type: "PERMIT_CREATED" }, "*");
-      } catch {}
-      // 일정 시간 후 닫기 (팝업일 때)
-      // setTimeout(() => window.close(), 800);
+      // ✅ 성공: 즉시 마켓 공급 목록으로 이동
+      router.replace("/market/supply");
+      return; // 아래 코드 실행 안 되도록 조기 반환
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -92,7 +91,7 @@ export default function NewPermitPage() {
       <h1 className="mb-6 text-xl font-bold">새 아이템 등록</h1>
 
       {done ? (
-        <div className="rounded-md bg-emerald-500/10 p-3 text-emerald-300">
+        <div className="rounded-md bg-red-500/10 p-3 text-red-300">
           등록 완료!
         </div>
       ) : (
@@ -100,7 +99,7 @@ export default function NewPermitPage() {
           <label className="block">
             <span className="block text-sm mb-1">Title</span>
             <input
-              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="스타벅스 아메리카노 쿠폰"
@@ -111,7 +110,7 @@ export default function NewPermitPage() {
           <label className="block">
             <span className="block text-sm mb-1">Description</span>
             <textarea
-              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="스타벅스 아메리카노 1잔 무료"
@@ -123,7 +122,7 @@ export default function NewPermitPage() {
           <label className="block">
             <span className="block text-sm mb-1">Image URL</span>
             <input
-              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://example.com/image.jpg"
@@ -134,7 +133,7 @@ export default function NewPermitPage() {
           <label className="block">
             <span className="block text-sm mb-1">Scope</span>
             <select
-              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
               value={scope}
               onChange={(e) => setScope(e.target.value as Scope)}
             >
@@ -149,7 +148,7 @@ export default function NewPermitPage() {
               <input
                 type="number"
                 min={0}
-                className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
                 value={limit}
                 onChange={(e) => setLimit(e.target.value)}
                 placeholder="1000"
@@ -162,7 +161,7 @@ export default function NewPermitPage() {
               <input
                 type="number"
                 min={0}
-                className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
                 value={faceValue}
                 onChange={(e) => setFaceValue(e.target.value)}
                 placeholder="1000"
@@ -176,7 +175,7 @@ export default function NewPermitPage() {
             <input
               type="number"
               min={0}
-              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="10000"
@@ -188,7 +187,7 @@ export default function NewPermitPage() {
             <span className="block text-sm mb-1">Expiry (유효기간)</span>
             <input
               type="datetime-local"
-              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-md border border-white/20 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-red-500"
               value={expiryLocal}
               onChange={(e) => setExpiryLocal(e.target.value)}
               // 예시로 기본값을 오늘 + 30일 23:59로 하고 싶다면 마운트 시 set으로 처리
@@ -209,17 +208,17 @@ export default function NewPermitPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+              className="rounded-lg bg-red-500 px-4 py-2 font-semibold text-white hover:bg-red-600 disabled:opacity-50"
             >
               {submitting ? "Submitting…" : "Create Item"}
             </button>
             <button
-              type="button"
-              onClick={() => window.close()}
-              className="rounded-lg border border-white/20 px-4 py-2 hover:bg-white/5"
+            type="button"
+            onClick={() => router.push("/market/supply")}
+            className="rounded-lg border border-gray-200 px-4 py-2 hover:bg-gray-400"
             >
-              Cancel
-            </button>
+            Cancel
+          </button>
           </div>
         </form>
       )}

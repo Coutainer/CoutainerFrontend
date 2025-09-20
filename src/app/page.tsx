@@ -9,6 +9,7 @@ import {
   ShoppingCartIcon,
   TruckIcon,
 } from "@heroicons/react/24/outline";
+import Image from "next/image";
 import PointChargeButton from "./components/PointChargeButton";
 
 
@@ -118,7 +119,7 @@ const cards = [
   { href: "/market", role: "issuer",  title: "발행자", desc: "토큰/쿠폰/증서를 발행",     Icon: UserGroupIcon,         tone: "from-indigo-500 to-sky-500" },
   { href: "/mycoupon", role: "seller",  title: "판매자", desc: "상품 등록 및 판매 관리",     Icon: BuildingStorefrontIcon, tone: "from-rose-500 to-orange-500" },
   { href: "/list",   role: "buyer",   title: "구매자", desc: "상품 탐색 및 결제",         Icon: ShoppingCartIcon,      tone: "from-emerald-500 to-lime-500" },
-  { href: "/market", role: "vendor",  title: "공급자", desc: "재고/납품 및 공급 관리",     Icon: TruckIcon,             tone: "from-violet-500 to-fuchsia-500" },
+  { href: "/market/supply", role: "vendor",  title: "공급자", desc: "재고/납품 및 공급 관리",     Icon: TruckIcon,             tone: "from-violet-500 to-fuchsia-500" },
 ];
 
 // 🔹 숫자 문자열을 천단위로 포맷 + 단위(P)
@@ -205,10 +206,20 @@ export default async function Page({
         {/* 상단 사용자 바 + 액션들 */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-sky-500 ring-2 ring-indigo-200/50" />
+            {/*<div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-sky-500 ring-2 ring-indigo-200/50" />*/}
+            <div className="h-10 w-10">
+              <Image
+                src="/logo.png"   // public/logo.png 에 위치해야 함
+                alt="Logo"
+                width={40}
+                height={40}
+                className="h-full w-full"
+              />
+            </div>
+
             <div className="min-w-0">
               <p className="truncate text-sm text-gray-600">
-                {profile ? "환영합니다!" : "프로필을 불러오는 중이거나 실패했습니다."}
+                {profile ? "Welcome!" : "프로필을 불러오는 중이거나 실패했습니다."}
               </p>
               <h2 className="truncate text-base font-semibold text-gray-900">
                 {profile ? `${profile.nickname} (${profile.role})` : "로그인 사용자"}

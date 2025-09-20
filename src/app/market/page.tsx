@@ -1,8 +1,7 @@
-// app/market/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Permit = {
   id?: number | string;
@@ -13,47 +12,45 @@ type Permit = {
   faceValue?: string | number;
   price?: string | number;
   expiry?: string; // ISO
-  // 그 외 필드가 있어도 안전하게 처리되도록 넉넉한 타입
-  [key: string]: any;
+  [key: string]: any; // 기타 필드
 };
 
 type Resp = { permits?: Permit[] };
 
 function toLocalImagePath(raw?: string | null, baseDir = "/market") {
   if (!raw) return null;
-
   let last = raw.trim();
-
-  // URL이면 pathname에서 마지막 세그먼트 추출
   try {
     const u = new URL(last);
     last = u.pathname;
-  } catch {
-    // URL이 아니면 그대로 진행
-  }
-
-  // 경로에서 파일명만 추출 + 쿼리/해시 제거
+  } catch {}
   const file = last.split("/").pop()?.split("?")[0].split("#")[0] ?? "";
-
-  // 파일명 안전성(허용 문자만) 검사
   const safe = /^[a-zA-Z0-9._-]+$/.test(file) ? file : "";
-
   if (!safe) return null;
-
-  // 확장자 없으면 무시(원하면 기본 확장자 붙이기 가능)
-  if (!/\.(png|jpe?g|webp|gif|svg)$/i.test(safe)) {
-    return null;
-  }
-
-  // public 하위 경로 반환 (예: public/market/...)
+  if (!/\.(png|jpe?g|webp|gif|svg)$/i.test(safe)) return null;
   return `${baseDir}/${safe}`;
 }
 
+const PAGE_SIZE = 8;
+
 export default function MarketPage() {
   const router = useRouter();
+  const search = useSearchParams();
   const [permits, setPermits] = useState<Permit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<boolean>(true);
+
+  // ✅ 모달/구매용 상태
+  const [buyOpen, setBuyOpen] = useState(false);
+  const [selected, setSelected] = useState<Permit | null>(null);
+  const [qty, setQty] = useState<number>(1);
+  const [buying, setBuying] = useState(false);
+  const [buyError, setBuyError] = useState<string | null>(null);
+  const [buyDone, setBuyDone] = useState<string | null>(null);
+
+  // ✅ 현재 페이지 (1부터 시작)
+  const pageFromQS = Number(search.get("page") ?? "1");
+  const currentPage = Number.isFinite(pageFromQS) && pageFromQS > 0 ? pageFromQS : 1;
 
   useEffect(() => {
     (async () => {
@@ -65,12 +62,10 @@ export default function MarketPage() {
           method: "GET",
           cache: "no-store",
         });
-
         if (!res.ok) {
           const t = await res.text().catch(() => "");
           throw new Error(t || `HTTP ${res.status}`);
         }
-
         const data: Resp = await res.json();
         setPermits(Array.isArray(data?.permits) ? data.permits : []);
       } catch (e: any) {
@@ -81,6 +76,63 @@ export default function MarketPage() {
       }
     })();
   }, []);
+
+  // ✅ 페이지네이션 계산
+  const total = permits?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const start = (safePage - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+
+  const pageItems = useMemo(() => {
+    if (!permits) return [];
+    return permits.slice(start, end);
+  }, [permits, start, end]);
+
+  const gotoPage = (p: number) => {
+    const next = Math.min(Math.max(1, p), totalPages);
+    const qs = new URLSearchParams(search.toString());
+    qs.set("page", String(next));
+    router.push(`?${qs.toString()}`);
+  };
+
+  // ✅ 구매 실행
+  async function handleBuy() {
+    if (!selected) return;
+    try {
+      setBuying(true);
+      setBuyError(null);
+      setBuyDone(null);
+
+      const raw = (selected as any).permitId ?? selected.id ?? selected.objectId;
+      const permitId = Number(raw);
+      if (!Number.isFinite(permitId) || permitId <= 0) {
+        throw new Error("유효한 permitId가 없습니다.");
+      }
+
+      const res = await fetch("/api/permit/buy", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ permitId }),
+      });
+
+      const text = await res.text().catch(() => "");
+      if (!res.ok) {
+        try {
+          const j = JSON.parse(text || "{}");
+          throw new Error(j?.message || j?.error || text || `구매 실패 (HTTP ${res.status})`);
+        } catch {
+          throw new Error(text || `구매 실패 (HTTP ${res.status})`);
+        }
+      }
+
+      setBuyDone(text || "구매가 완료되었습니다.");
+    } catch (e: any) {
+      setBuyError(e?.message ?? "구매 중 오류가 발생했습니다.");
+    } finally {
+      setBuying(false);
+    }
+  }
 
   if (pending) {
     return (
@@ -111,7 +163,7 @@ export default function MarketPage() {
       <h1 className="mb-6 text-xl font-bold">Market</h1>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {permits.map((p) => {
+        {pageItems.map((p) => {
           const id = String(p.id ?? p.objectId ?? crypto.randomUUID());
           const price =
             typeof p.price === "number"
@@ -127,19 +179,27 @@ export default function MarketPage() {
               ? Number(p.faceValue).toLocaleString()
               : p.faceValue ?? "-";
 
-          const expiry = p.expiry
-            ? new Date(p.expiry).toLocaleString()
-            : undefined;
+          const expiry = p.expiry ? new Date(p.expiry).toLocaleString() : undefined;
 
           return (
             <div
               key={id}
               className="group overflow-hidden rounded-2xl border border-white/10 bg-card/60 backdrop-blur hover:border-white/20 transition"
             >
-              {/* 이미지 영역 */}
-              <div className="relative aspect-[4/3] w-full bg-black/10">
+              {/* 이미지 */}
+              <div
+                className="relative aspect-[4/3] w-full bg-black/10 cursor-pointer"
+                onClick={() => {
+                  setSelected(p);
+                  setQty(1);
+                  setBuyError(null);
+                  setBuyDone(null);
+                  setBuyOpen(true);
+                }}
+                title="클릭하여 구매"
+              >
                 {(() => {
-                  const localSrc = toLocalImagePath(p.imageUrl, "/market"); // public/market 에 저장해 두세요
+                  const localSrc = toLocalImagePath(p.imageUrl, "/market");
                   if (localSrc) {
                     return (
                       <img
@@ -158,46 +218,166 @@ export default function MarketPage() {
                 })()}
               </div>
 
-              {/* 텍스트 영역 */}
+              {/* 텍스트 */}
               <div className="p-4">
                 <h3 className="line-clamp-1 font-semibold">{p.title ?? "제목 없음"}</h3>
                 {p.description && (
-                  <p className="mt-1 line-clamp-2 text-sm text-slate-400">
-                    {p.description}
-                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm text-slate-400">{p.description}</p>
                 )}
 
                 <div className="mt-4 flex items-center justify-between">
-                  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">
+                  <span className="rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-xs text-red-300">
                     {price !== "-" ? `${price} WON` : "가격 미정"}
                   </span>
-                  {faceValue && (
-                    <span className="text-xs text-slate-400">
-                      FV: {faceValue}
-                    </span>
-                  )}
+                  {faceValue && <span className="text-xs text-slate-400">FV: {faceValue}</span>}
                 </div>
 
                 {expiry && (
-                  <div className="mt-2 text-right text-[11px] text-slate-500">
-                    만료: {expiry}
-                  </div>
+                  <div className="mt-2 text-right text-[11px] text-slate-500">만료: {expiry}</div>
                 )}
 
                 <button
                   onClick={() => {
-                    // 상세 페이지로 이동이 필요하면 여기서 라우팅
-                    // 예: router.push(`/market/${p.objectId ?? p.id}`);
+                    setSelected(p);
+                    setQty(1);
+                    setBuyError(null);
+                    setBuyDone(null);
+                    setBuyOpen(true);
                   }}
                   className="mt-4 w-full rounded-xl bg-white/10 py-2 text-sm text-white hover:bg-white/20"
                 >
-                  자세히 보기
+                  구매하기
                 </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* ✅ 페이지네이션 */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-2">
+          <button
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-50"
+            onClick={() => gotoPage(safePage - 1)}
+            disabled={safePage <= 1}
+            aria-label="이전 페이지"
+          >
+            이전
+          </button>
+
+          {/* 간단한 숫자 페이지 버튼 (최대 7개 표시) */}
+          {(() => {
+            const windowSize = 7;
+            let startP = Math.max(1, safePage - Math.floor(windowSize / 2));
+            let endP = Math.min(totalPages, startP + windowSize - 1);
+            if (endP - startP + 1 < windowSize) {
+              startP = Math.max(1, endP - windowSize + 1);
+            }
+            const arr = [];
+            for (let p = startP; p <= endP; p++) arr.push(p);
+            return arr.map((p) => (
+              <button
+                key={p}
+                onClick={() => gotoPage(p)}
+                className={`rounded-lg px-3 py-1.5 text-sm border ${
+                  p === safePage
+                    ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+                    : "border-white/10 hover:bg-white/10"
+                }`}
+                aria-current={p === safePage ? "page" : undefined}
+              >
+                {p}
+              </button>
+            ));
+          })()}
+
+          <button
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-50"
+            onClick={() => gotoPage(safePage + 1)}
+            disabled={safePage >= totalPages}
+            aria-label="다음 페이지"
+          >
+            다음
+          </button>
+        </div>
+      )}
+
+      {/* ✅ 구매 모달 */}
+      {buyOpen && selected && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => {
+            if (!buying) setBuyOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-neutral-900 text-white shadow-xl border border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-white/10">
+              <h2 className="text-lg font-semibold">구매하기</h2>
+              <p className="mt-1 text-sm text-slate-400 line-clamp-2">
+                {selected.title ?? "-"}
+              </p>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">permitId</span>
+                  <span className="font-mono">
+                    {String(selected.id ?? selected.objectId ?? "-")}
+                  </span>
+                </div>
+                <div className="mt-1 flex justify-between">
+                  <span className="text-slate-400">가격</span>
+                  <span>
+                    {(() => {
+                      const v = selected.price;
+                      const n =
+                        typeof v === "number"
+                          ? v
+                          : typeof v === "string" && !Number.isNaN(Number(v))
+                          ? Number(v)
+                          : undefined;
+                      return n ? `${n.toLocaleString()} WON` : (v as any) ?? "-";
+                    })()}
+                  </span>
+                </div>
+              </div>
+
+              {buyError && (
+                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+                  {buyError}
+                </div>
+              )}
+              {buyDone && (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+                  {buyDone}
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-white/10 flex gap-2">
+              <button
+                disabled={buying}
+                onClick={() => setBuyOpen(false)}
+                className="flex-1 rounded-xl bg-white/10 hover:bg-white/20 py-2 text-sm disabled:opacity-50"
+              >
+                닫기
+              </button>
+              <button
+                disabled={buying}
+                onClick={handleBuy}
+                className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-600 py-2 text-sm text-black font-semibold disabled:opacity-50"
+              >
+                {buying ? "구매 중..." : "구매 확정"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
