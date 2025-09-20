@@ -1,4 +1,7 @@
 // app/page.tsx
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   UserGroupIcon,
@@ -15,6 +18,15 @@ const cards = [
 ];
 
 export default function Page() {
+  useEffect(() => {
+    // 로그인 직후라면 명시적으로 동기화 트리거해도 됨
+    fetch("/api/me", { cache: "no-store" }).then(async r => {
+      if (r.ok) {
+        const data = await r.json();
+        localStorage.setItem("me", JSON.stringify(data));
+      }
+    });
+  }, []);
   return (
     <main className="relative min-h-[100svh] flex items-center justify-center overflow-hidden">
       {/* Soft gradient background */}
