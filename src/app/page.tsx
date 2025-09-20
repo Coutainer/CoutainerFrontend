@@ -9,6 +9,8 @@ import {
   ShoppingCartIcon,
   TruckIcon,
 } from "@heroicons/react/24/outline";
+import PointChargeButton from "./components/PointChargeButton";
+
 
 // ===== Server Action: 로그아웃 =====
 export async function logout() {
@@ -96,12 +98,20 @@ export async function downgradeToConsumer() {
   redirect("/?downgraded=1");
 }
 
+// 🔹 points 타입 추가
+type Points = {
+  balance: string;
+  totalEarned: string;
+  totalSpent: string;
+};
+
 type Profile = {
   id: number;
   address: string;
   nickname: string;
   role: "CONSUMER" | "SELLER" | "ISSUER" | "VENDOR" | "BUSINESS" | string;
   hasWallet: boolean;
+  points?: Points; // 🔹 optional 처리
 };
 
 const cards = [
@@ -110,6 +120,14 @@ const cards = [
   { href: "/list",   role: "buyer",   title: "구매자", desc: "상품 탐색 및 결제",         Icon: ShoppingCartIcon,      tone: "from-emerald-500 to-lime-500" },
   { href: "/market", role: "vendor",  title: "공급자", desc: "재고/납품 및 공급 관리",     Icon: TruckIcon,             tone: "from-violet-500 to-fuchsia-500" },
 ];
+
+// 🔹 숫자 문자열을 천단위로 포맷 + 단위(P)
+function formatPoints(s?: string) {
+  if (!s && s !== "0") return "-";
+  const n = Number(s);
+  if (!Number.isFinite(n)) return s ?? "-";
+  return `${n.toLocaleString()} P`;
+}
 
 // searchParams 받아서 배너 표시
 export default async function Page({
@@ -122,7 +140,6 @@ export default async function Page({
 
   // ✅ 반드시 await
   const sp = await searchParams;
-
 
   // /user/profile 조회
   let profile: Profile | null = null;
@@ -146,8 +163,13 @@ export default async function Page({
   const roleUpper = profile?.role?.toUpperCase();
   const isBusinessLike = !!(roleUpper && ["BUSINESS", "SELLER", "ISSUER", "VENDOR"].includes(roleUpper));
   const isPureConsumer = roleUpper === "CONSUMER";
-
   const isConsumer = roleUpper === "CONSUMER";
+
+  // 🔹 포인트 값 편의 변수
+  const p = profile?.points;
+  const pointBalance = formatPoints(p?.balance);
+  const pointEarned = formatPoints(p?.totalEarned);
+  const pointSpent  = formatPoints(p?.totalSpent);
 
   return (
     <main className="relative min-h-[100svh] flex items-center justify-center overflow-hidden">
@@ -196,8 +218,8 @@ export default async function Page({
 
           {/* 버튼 묶음: 역할에 따라 업/다운 토글 */}
           <div className="flex items-center gap-2">
+            <PointChargeButton/>
             {isBusinessLike ? (
-              // 소비자로 다운그레이드 버튼
               <form action={downgradeToConsumer}>
                 <button
                   type="submit"
@@ -209,7 +231,6 @@ export default async function Page({
                 </button>
               </form>
             ) : (
-              // 사업자 전환 버튼
               <form action={upgradeToBusiness}>
                 <button
                   type="submit"
@@ -241,12 +262,24 @@ export default async function Page({
         <div className="mb-8 overflow-hidden rounded-2xl bg-white/90 p-5 ring-1 ring-gray-200">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold text-gray-900">내 프로필</h3>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide
-              ${profile?.hasWallet ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}
-            >
-              {profile?.hasWallet ? "지갑 연결됨" : "지갑 없음"}
-            </span>
+
+            {/* 🔹 배지 영역: 보유 포인트 + 지갑 상태 */}
+            <div className="flex items-center gap-2">
+              {/* ⬇️ 추가된 보유 포인트 배지 */}
+              <span
+                className="rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                title="보유 포인트"
+              >
+                보유 포인트 {pointBalance}
+              </span>
+
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide
+                ${profile?.hasWallet ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}
+              >
+                {profile?.hasWallet ? "지갑 연결됨" : "지갑 없음"}
+              </span>
+            </div>
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-3 text-sm text-gray-700 sm:grid-cols-2">
@@ -356,7 +389,6 @@ export default async function Page({
             );
           })}
         </section>
-
 
         <div className="mt-10 text-center text-sm text-gray-600">
           잘 모르겠나요?{" "}

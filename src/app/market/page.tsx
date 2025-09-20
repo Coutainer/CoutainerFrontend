@@ -19,6 +19,36 @@ type Permit = {
 
 type Resp = { permits?: Permit[] };
 
+function toLocalImagePath(raw?: string | null, baseDir = "/market") {
+  if (!raw) return null;
+
+  let last = raw.trim();
+
+  // URL이면 pathname에서 마지막 세그먼트 추출
+  try {
+    const u = new URL(last);
+    last = u.pathname;
+  } catch {
+    // URL이 아니면 그대로 진행
+  }
+
+  // 경로에서 파일명만 추출 + 쿼리/해시 제거
+  const file = last.split("/").pop()?.split("?")[0].split("#")[0] ?? "";
+
+  // 파일명 안전성(허용 문자만) 검사
+  const safe = /^[a-zA-Z0-9._-]+$/.test(file) ? file : "";
+
+  if (!safe) return null;
+
+  // 확장자 없으면 무시(원하면 기본 확장자 붙이기 가능)
+  if (!/\.(png|jpe?g|webp|gif|svg)$/i.test(safe)) {
+    return null;
+  }
+
+  // public 하위 경로 반환 (예: public/market/...)
+  return `${baseDir}/${safe}`;
+}
+
 export default function MarketPage() {
   const router = useRouter();
   const [permits, setPermits] = useState<Permit[] | null>(null);
@@ -108,19 +138,24 @@ export default function MarketPage() {
             >
               {/* 이미지 영역 */}
               <div className="relative aspect-[4/3] w-full bg-black/10">
-                {/* next/image 설정 전이므로 우선 <img> 사용 */}
-                {p.imageUrl ? (
-                  <img
-                    src={p.imageUrl}
-                    alt={p.title ?? "permit"}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">
-                    No Image
-                  </div>
-                )}
+                {(() => {
+                  const localSrc = toLocalImagePath(p.imageUrl, "/market"); // public/market 에 저장해 두세요
+                  if (localSrc) {
+                    return (
+                      <img
+                        src={localSrc}
+                        alt={p.title ?? "permit"}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    );
+                  }
+                  return (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">
+                      No Image
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* 텍스트 영역 */}
