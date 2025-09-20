@@ -3,7 +3,7 @@ import { FcGoogle } from "react-icons/fc";
 
 export default function GoogleLoginButton() {
     function googleLogin() {
-        const clientId = '706088875754-n7cortpqmp75gft18b5c5j4dons8cuic.apps.googleusercontent.com';
+        const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
         const redirectUri = 'http://localhost:3000/auth/callback';
         const scope = 'openid email profile';
         const responseType = 'code';
