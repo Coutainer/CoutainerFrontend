@@ -53,7 +53,7 @@ export default function GoogleLoginButton() {
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">Coutainer</h1>
             </div>
             <p className="mt-3 text-sm text-gray-500">
-              간결하고 안전한 로그인. Google 계정으로 시작하세요.
+              Simple and secure login. Start with a Google account.
             </p>
           </div>
 
@@ -69,13 +69,13 @@ export default function GoogleLoginButton() {
 
               <div className="flex items-center justify-center gap-3 px-5 py-3.5">
                 <FcGoogle className="h-5 w-5" />
-                <span className="font-semibold">{loading ? "Google로 이동 중..." : "Google로 zkLogin"}</span>
+                <span className="font-semibold">{loading ? "Going to Google..." : "Google for zkLogin"}</span>
               </div>
             </button>
 
             {/* tiny copy */}
             <p className="mt-4 text-[11px] leading-5 text-gray-400 text-center">
-              계속하면 서비스 약관과 개인정보 처리방침에 동의하게 됩니다.
+              If you continue, you will agree to the terms of service and the privacy policy.
             </p>
           </div>
         </div>
