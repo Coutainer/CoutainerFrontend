@@ -28,6 +28,33 @@ type MarketItem = {
   owner: Owner;
 };
 
+function toLocalMarketPath(raw?: string | null, baseDir = "/market") {
+  if (!raw) return null;
+
+  let last = String(raw).trim();
+
+  // URL이면 pathname만 뽑기
+  try {
+    const u = new URL(last);
+    last = u.pathname;
+  } catch {
+    // URL이 아니면 그대로 진행
+  }
+
+  // 파일명만 추출 (쿼리/해시 제거)
+  const file = last.split("/").pop()?.split("?")[0].split("#")[0] ?? "";
+
+  // 파일명 화이트리스트 (보안/오타 방지)
+  const safe = /^[a-zA-Z0-9._-]+$/.test(file) ? file : "";
+  if (!safe) return null;
+
+  // 이미지 확장자만 허용
+  if (!/\.(png|jpe?g|webp|gif|svg)$/i.test(safe)) return null;
+
+  // public/market/파일명
+  return `${baseDir}/${safe}`;
+}
+
 export default function OrdersPage() {
   const [items, setItems] = useState<MarketItem[]>([]);
   const [pending, setPending] = useState(true);
@@ -174,8 +201,10 @@ export default function OrdersPage() {
 
               {items.map((o) => {
                 const st = stockInfo(o.remaining);
-                const isExternal = /^https?:\/\//i.test(o.imageUrl);
                 const isBusy = buyingId === o.objectId;
+
+                // ⬇️ 로컬 경로로 변환 (실패 시 기본 이미지)
+                const localSrc = toLocalMarketPath(o.imageUrl) ?? "/market/default.png";
 
                 return (
                   <article
@@ -185,59 +214,39 @@ export default function OrdersPage() {
                     {/* product image */}
                     <div className="shrink-0">
                       <div className="rounded-2xl bg-neutral-100 p-3">
-                        {isExternal ? (
-                          <img
-                            src={o.imageUrl}
-                            alt={o.title}
-                            className="h-16 w-[90px] object-contain rounded-md"
-                            width={90}
-                            height={64}
-                            loading="lazy"
-                          />
-                        ) : (
-                          <Image
-                            src={o.imageUrl || "/placeholder.png"}
-                            alt={o.title}
-                            width={90}
-                            height={64}
-                            className="h-16 w-[90px] object-contain"
-                            priority
-                            unoptimized
-                          />
-                        )}
+                        <Image
+                          src={localSrc}
+                          alt={o.title}
+                          width={90}
+                          height={64}
+                          className="h-16 w-[90px] object-contain rounded-md"
+                          priority={false}
+                        />
                       </div>
                     </div>
 
-                    {/* info */}
+                    {/* info ... 이하 동일 */}
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-neutral-900 line-clamp-2">
                         {o.title}
                       </h3>
-
                       <p className="mt-1 text-sm text-neutral-500 line-clamp-2">
                         {o.description}
                       </p>
-
                       <div className="mt-2 flex items-center gap-3 text-sm">
                         <span className="inline-flex items-center gap-2 text-neutral-500">
                           <span className={`inline-block h-2.5 w-2.5 rounded-full ${st.dot}`} />
                           {st.label}
                         </span>
-                        <span className="text-neutral-400">
-                          Trades: {o.tradeCount}
-                        </span>
+                        <span className="text-neutral-400">Trades: {o.tradeCount}</span>
                       </div>
-
                       <div className="mt-3 flex items-center justify-between">
                         <div className="text-xl mr-5 font-extrabold tracking-tight">
                           {formatWon(o.faceValue)}
                         </div>
-
                         <div className="flex items-center gap-2 text-xs text-neutral-400">
                           <span>{formatExpiresAt(o.expiresAt)}</span>
                         </div>
-
-                        {/* Buy 버튼 */}
                         <button
                           className={`ml-auto rounded-full px-4 py-2 text-sm font-semibold transition
                             ${isBusy ? "bg-neutral-300 text-neutral-500" : "bg-neutral-900 text-white hover:bg-neutral-800"}`}
