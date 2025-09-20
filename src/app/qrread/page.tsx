@@ -1,71 +1,67 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  BrowserMultiFormatReader,
+  IScannerControls,
+} from '@zxing/browser';
 import {
   BinaryBitmap,
   HybridBinarizer,
   RGBLuminanceSource,
-  QRCodeReader
+  QRCodeReader,
+  NotFoundException,
+  Result,
 } from '@zxing/library';
 
 type VerifyResponse =
-  | { exists: true; data: any }   // 서버가 찾은 경우 (원하는 스키마로 바꿔도 됨)
-  | { exists: false; message?: string }; // 없는 경우
+  | { exists: true; data: any }
+  | { exists: false; message?: string };
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_IP;
 
-export default function QrReadPage() {
+/**
+ * ZXing 전용 진단 페이지 (타입/시그니처 정리 버전)
+ * - BarcodeDetector 사용 안 함
+ * - decodeFromVideoDevice로 실시간 스트림 디코딩
+ * - 수동 스냅샷 디코드 버튼 제공
+ */
+export default function QrReadPageZXingOnly() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const detectorRef = useRef<any>(null); // BarcodeDetector 또는 ZXing Reader
-  const isBarcodeDetectorSupported = useMemo(
-    () => typeof window !== 'undefined' && 'BarcodeDetector' in window,
-    []
-  );
+  const zxingReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null); // ← 반환 컨트롤 저장
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null); // 수동 스냅샷용
+  const qrReaderRef = useRef<QRCodeReader | null>(null); // 수동 스냅샷 디코더
 
   const [status, setStatus] = useState<'idle' | 'camera' | 'scanning' | 'verifying' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [lastCode, setLastCode] = useState<string | null>(null);
   const [result, setResult] = useState<VerifyResponse | null>(null);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [paused, setPaused] = useState(false); // 스캔 잠깐 멈추기
+  const [frame, setFrame] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const [hitBlink, setHitBlink] = useState(false);
+  const hitBlinkTimer = useRef<number | undefined>(undefined);
 
-  // 카메라 열기
-  const openCamera = useCallback(async () => {
+  const flashHit = () => {
+    setHitBlink(true);
+    if (hitBlinkTimer.current) window.clearTimeout(hitBlinkTimer.current);
+    hitBlinkTimer.current = window.setTimeout(() => setHitBlink(false), 300);
+  };
+
+  const stopAll = useCallback(() => {
     try {
-      setError(null);
-      setResult(null);
-      setLastCode(null);
-      setStatus('camera');
-
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: 'environment' }, // 모바일 후면 카메라 우선
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
-      // 준비 완료
-      setCameraReady(true);
-      setStatus('scanning');
-    } catch (e: any) {
-      setStatus('error');
-      setError(e?.message || '카메라 접근에 실패했습니다. (HTTPS/localhost 필요)');
+      controlsRef.current?.stop(); // ← IScannerControls 사용
+      controlsRef.current = null;
+    } catch {}
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     }
+    if (hitBlinkTimer.current) window.clearTimeout(hitBlinkTimer.current);
   }, []);
 
-  // 검증 API 호출
+  // 검증 API
   const verifyCode = useCallback(async (code: string) => {
     if (!API_BASE) {
       setStatus('error');
@@ -75,24 +71,12 @@ export default function QrReadPage() {
     try {
       setStatus('verifying');
       setResult(null);
-
-      // 서버 규약에 맞게 엔드포인트 조정하세요.
-      // 예: GET /qr/verify?code=...
       const url = `${API_BASE.replace(/\/$/, '')}/qr/verify?code=${encodeURIComponent(code)}`;
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          // JWT가 필요한 경우:
-          // 'Authorization': `Bearer ${token}`
-        },
-      });
-
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`서버 오류 (${res.status}) ${text}`);
       }
-
       const json = (await res.json()) as VerifyResponse;
       setResult(json);
       setStatus('done');
@@ -102,159 +86,161 @@ export default function QrReadPage() {
     }
   }, []);
 
-  // ZXing 동적 임포트 (폴백용)
-  const initZxing = useCallback(async () => {
-    const { BrowserMultiFormatReader } = await import('@zxing/browser');
-    const reader = new BrowserMultiFormatReader();
-    detectorRef.current = reader;
-  }, []);
+  // 카메라 열기 + decodeFromVideoDevice 시작(사용자 제스처에서 호출)
+  const startScan = useCallback(async () => {
+    try {
+      setError(null);
+      setResult(null);
+      setLastCode(null);
+      setStatus('camera');
 
-  // BarcodeDetector 초기화
-  const initBarcodeDetector = useCallback(async () => {
-    // @ts-ignore
-    const BarcodeDetectorCtor = (window as any).BarcodeDetector;
-    // @ts-ignore
-    const supported = await BarcodeDetectorCtor.getSupportedFormats?.().catch(() => []) || [];
-    // @ts-ignore
-    detectorRef.current = new BarcodeDetectorCtor({ formats: supported.length ? supported : ['qr_code'] });
-  }, []);
-
-  // 스캔 루프 (BarcodeDetector)
-  const scanWithBarcodeDetector = useCallback(async () => {
-    if (!videoRef.current || !detectorRef.current) return;
-
-    const tick = async () => {
-      if (!videoRef.current || !detectorRef.current || paused) {
-        rafRef.current = requestAnimationFrame(tick);
-        return;
+      if (!zxingReaderRef.current) {
+        zxingReaderRef.current = new BrowserMultiFormatReader();
       }
+      const reader = zxingReaderRef.current;
 
-      try {
-        // @ts-ignore
-        const barcodes = await detectorRef.current.detect(videoRef.current);
-        if (barcodes && barcodes.length > 0) {
-          const code = barcodes[0].rawValue || barcodes[0].raw || '';
-          if (code && code !== lastCode) {
-            setLastCode(code);
-            setPaused(true); // 중복 검증 방지로 잠깐 멈춤
-            await verifyCode(code);
-          }
-        }
-      } catch {
-        // 프레임 처리 실패는 무시하고 다음 프레임
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-  }, [lastCode, paused, verifyCode]);
-
-  // 스캔 루프 (ZXing)
-  const scanWithZxing = useCallback(async () => {
-    const reader = detectorRef.current;
-    if (!reader || !videoRef.current) return;
-
-    // @zxing/browser는 직접 비디오 요소에 attach 하는 방식도 있으나
-    // 여기서는 프레임 폴링 방식으로 사용
-    const tick = async () => {
-      if (!videoRef.current || !reader || paused) {
-        rafRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      try {
-        // 캔버스에 한 프레임 그려서 decode
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const w = videoRef.current.videoWidth || 1280;
-        const h = videoRef.current.videoHeight || 720;
-        canvas.width = w;
-        canvas.height = h;
-        if (ctx) {
-          ctx.drawImage(videoRef.current, 0, 0, w, h);
-          const imageData = ctx.getImageData(0, 0, w, h);
-          //const { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, QRCodeReader } = await import('@zxing/browser/esm5/core'); // 내부 모듈
-          const luminance = new RGBLuminanceSource(imageData.data, w, h);
-          const binarizer = new HybridBinarizer(luminance);
-          const bitmap = new BinaryBitmap(binarizer);
-          const qrReader = new QRCodeReader();
+      // deviceId는 undefined로 전달(자동 선택). null 금지.
+      const controls = await reader.decodeFromVideoDevice(
+        undefined,
+        videoRef.current!,
+        (res?: Result, err?: unknown) => {
           try {
-            const res = qrReader.decode(bitmap);
-            const code = res.getText();
-            if (code && code !== lastCode) {
-              setLastCode(code);
-              setPaused(true);
-              await verifyCode(code);
+            const v = videoRef.current;
+            if (v && v.videoWidth && v.videoHeight) {
+              setFrame((f) =>
+                f.w === v.videoWidth && f.h === v.videoHeight
+                  ? f
+                  : { w: v.videoWidth, h: v.videoHeight }
+              );
             }
-          } catch {
-            // decode 실패 → 다음 프레임
+            if (res) {
+              const code = res.getText();
+              if (code && code !== lastCode) {
+                flashHit();
+                setLastCode(code);
+                setStatus('scanning'); // UI색 유지
+                verifyCode(code);
+              }
+            }
+            if (err && !(err instanceof NotFoundException)) {
+              // NotFound는 "이번 프레임에 못 찾음"이라 정상 흐름
+              // 그 외 에러만 콘솔에 표시
+              console.debug('[ZXing error]', err);
+            }
+          } catch (e) {
+            console.debug('[callback error]', e);
           }
         }
-      } catch {
-        // 프레임 처리 실패는 무시
+      );
+
+      controlsRef.current = controls;
+
+      // 스트림 핸들 보관(정리용)
+      const v = videoRef.current;
+      if (v && v.srcObject instanceof MediaStream) {
+        streamRef.current = v.srcObject as MediaStream;
       }
-      rafRef.current = requestAnimationFrame(tick);
-    };
 
-    rafRef.current = requestAnimationFrame(tick);
-  }, [lastCode, paused, verifyCode]);
+      setStatus('scanning');
+    } catch (e: any) {
+      setStatus('error');
+      setError(e?.message || '카메라/디코더 초기화 실패 (HTTPS/권한 확인)');
+    }
+  }, [lastCode, verifyCode]);
 
-  // 시작/초기화
-  useEffect(() => {
-    openCamera();
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
+  // 수동 스냅샷 디코드(디버그)
+  const snapshotDecode = useCallback(() => {
+    try {
+      const v = videoRef.current;
+      if (!v || !v.videoWidth || !v.videoHeight) {
+        alert('비디오 프레임이 준비되지 않았습니다.');
+        return;
       }
-    };
-  }, [openCamera]);
+      if (!canvasRef.current) canvasRef.current = document.createElement('canvas');
+      if (!qrReaderRef.current) qrReaderRef.current = new QRCodeReader();
 
-  // 스캐너 초기화 + 루프 시작
-  useEffect(() => {
-    const run = async () => {
-      if (!cameraReady) return;
+      // 다운스케일(예: 최대 960px 폭) → 속도/안정성 향상
+      const maxW = 960;
+      const scale = Math.min(1, maxW / v.videoWidth);
+      const w = Math.max(1, Math.floor(v.videoWidth * scale));
+      const h = Math.max(1, Math.floor(v.videoHeight * scale));
+
+      const c = canvasRef.current;
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(v, 0, 0, w, h);
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const luminance = new RGBLuminanceSource(imageData.data, w, h);
+      const binarizer = new HybridBinarizer(luminance);
+      const bitmap = new BinaryBitmap(binarizer);
+
       try {
-        if (isBarcodeDetectorSupported) {
-          await initBarcodeDetector();
-          await scanWithBarcodeDetector();
+        const res = qrReaderRef.current.decode(bitmap);
+        const code = res.getText();
+        if (code) {
+          flashHit();
+          setLastCode(code);
+          verifyCode(code);
         } else {
-          await initZxing();
-          await scanWithZxing();
+          alert('QR을 찾지 못했습니다 (스냅샷). 더 가까이/밝게 비춰보세요.');
         }
-      } catch (e: any) {
-        setError(e?.message || '스캐너 초기화 실패');
-        setStatus('error');
+      } catch (err) {
+        console.debug('[snapshot decode fail]', err);
+        alert('스냅샷 디코딩 실패. 각도/거리/밝기를 조정해보세요.');
       }
+    } catch (e) {
+      console.debug('[snapshot error]', e);
+    }
+  }, [verifyCode]);
+
+  useEffect(() => {
+    return () => {
+      stopAll();
     };
-    run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraReady]);
+  }, [stopAll]);
 
   const resetScan = () => {
     setResult(null);
     setLastCode(null);
-    setPaused(false);
     setStatus('scanning');
+    setHitBlink(false);
   };
 
   return (
     <main className="mx-auto max-w-xl px-4 py-6 space-y-4">
-      <h1 className="text-2xl font-bold">QR 코드 스캔</h1>
+      <h1 className="text-2xl font-bold">QR 코드 스캔 (ZXing 진단용)</h1>
 
-      <div className="rounded-2xl overflow-hidden bg-black aspect-video relative">
+      <div className={`rounded-2xl overflow-hidden bg-black aspect-video relative ${hitBlink ? 'ring-4 ring-emerald-400' : ''}`}>
         <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-        {/* 가이드 라인 */}
         <div className="absolute inset-0 pointer-events-none border-2 border-white/30 rounded-xl m-8" />
+        <div className="absolute left-2 bottom-2 text-[10px] px-2 py-1 rounded bg-black/60 text-white space-y-0.5">
+          <div>engine: ZXing (decodeFromVideoDevice)</div>
+          <div>frame: {frame.w}×{frame.h}</div>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 text-sm text-slate-500">
-        <span className="inline-flex h-2 w-2 rounded-full"
-          style={{ background: status === 'scanning' ? '#22c55e' : status === 'verifying' ? '#f59e0b' : status === 'done' ? '#3b82f6' : '#94a3b8' }} />
+        <span
+          className="inline-flex h-2 w-2 rounded-full"
+          style={{
+            background:
+              status === 'scanning'
+                ? '#22c55e'
+                : status === 'verifying'
+                ? '#f59e0b'
+                : status === 'done'
+                ? '#3b82f6'
+                : status === 'error'
+                ? '#ef4444'
+                : '#94a3b8',
+          }}
+        />
         <span>
           {status === 'idle' && '대기 중'}
-          {status === 'camera' && '카메라 준비 중…'}
-          {status === 'scanning' && (paused ? '일시정지됨' : '스캔 중… QR을 프레임 중앙에 맞춰주세요')}
+          {status === 'camera' && '카메라 준비 중… (버튼으로 시작)'}
+          {status === 'scanning' && '스캔 중… QR을 프레임 중앙에 맞춰주세요'}
           {status === 'verifying' && '서버 검증 중…'}
           {status === 'done' && '검증 완료'}
           {status === 'error' && '오류'}
@@ -282,10 +268,7 @@ export default function QrReadPage() {
             {JSON.stringify(result, null, 2)}
           </pre>
           <div className="flex gap-2">
-            <button
-              onClick={resetScan}
-              className="rounded-xl px-4 py-2 text-sm bg-black text-white"
-            >
+            <button onClick={resetScan} className="rounded-xl px-4 py-2 text-sm bg-black text-white">
               다시 스캔
             </button>
           </div>
@@ -293,24 +276,21 @@ export default function QrReadPage() {
       )}
 
       {!result && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => setPaused(p => !p)}
-            className="rounded-xl px-4 py-2 text-sm bg-slate-800 text-white"
-          >
-            {paused ? '스캔 재개' : '스캔 일시정지'}
+        <div className="flex flex-wrap gap-2">
+          <button onClick={startScan} className="rounded-xl px-4 py-2 text-sm bg-emerald-600 text-white">
+            카메라 시작(필수)
           </button>
-          <button
-            onClick={resetScan}
-            className="rounded-xl px-4 py-2 text-sm border border-slate-300"
-          >
+          <button onClick={snapshotDecode} className="rounded-xl px-4 py-2 text-sm bg-slate-800 text-white">
+            스냅샷 디코드(디버그)
+          </button>
+          <button onClick={resetScan} className="rounded-xl px-4 py-2 text-sm border border-slate-300">
             초기화
           </button>
         </div>
       )}
 
       <p className="text-xs text-slate-400">
-        * 카메라는 HTTPS 또는 localhost에서만 동작합니다. 모바일에서는 후면 카메라가 우선 선택됩니다.
+        * HTTPS 또는 localhost 필요. 모바일은 후면 카메라가 선택되지 않으면 화면 회전/카메라 전환을 시도하세요.
       </p>
     </main>
   );
