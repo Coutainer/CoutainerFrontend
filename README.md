@@ -1,3 +1,16 @@
+# Coutainer 
+
+### Sui-mming Hackerthon 2025
+https://luma.com/rhv3wj3l?locale=ko
+
+![logo](./public/logo.png)
+### Coutainer : coupon + container
+
+
+## development period
+2025.09.19 - 2025.09.21
+
+
 ## Getting Started
 
 First, make your .env file in root directory :
@@ -23,6 +36,3 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-
-## Learn More
